@@ -1,67 +1,26 @@
-const express = require("express");
-const cors = require("cors");
-const mongoose = require("mongoose");
-const userRoutes = require("./routes/userRoutes");
-const messagesRoute = require("./routes/messagesRoute");
-const socket = require("socket.io");
+// Import required modules
+const express = require('express');
+const dotenv = require('dotenv'); // Import dotenv for environment variables
 
+// Load environment variables from .env file
+dotenv.config();
+
+// Import route files
+const registerRouter = require('./register');
+const authRouter = require('./auth');
+
+// Create an Express application
 const app = express();
-require("dotenv").config();
+const port = process.env.PORT; // Port on which the server will run, default to 3000 if PORT is not defined in the environment
 
-app.use(cors());
+// Middleware to parse JSON bodies
 app.use(express.json());
 
-app.use("/api/auth", userRoutes);
-app.use("/api/messages", messagesRoute);
+// Use route files
+app.use(registerRouter);
+app.use(authRouter);
 
-mongoose
-  .connect(process.env.MONGO_URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
-    console.log("Db connection successful");
-  })
-  .catch((err) => {
-    console.log(err.message);
-  });
-
-const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
-});
-
-//deployment code
-const path = require("path");
-
-app.use(express.static(path.join(__dirname, "./public/build")));
-app.get("*", function (_, res) {
-  res.sendFile(
-    path.join(__dirname, "./public/build/index.html"),
-    function (err) {
-      res.status(500).send(err);
-    }
-  );
-});
-//deployment code
-const io = socket(server, {
-  cors: {
-    origin: "*",
-    credentials: true,
-  },
-});
-
-global.onlineUsers = new Map();
-io.on("connection", (socket) => {
-  global.chatSocket = socket;
-  socket.on("add-user", (userId) => {
-    onlineUsers.set(userId, socket.id);
-  });
-
-  socket.on("send-msg", (data) => {
-    const sendUserSocket = onlineUsers.get(data.to);
-    if (sendUserSocket) {
-      socket.to(sendUserSocket).emit("msg-recieve", data.message);
-    }
-  });
+// Start the server
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });
